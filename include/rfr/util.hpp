@@ -491,9 +491,47 @@ class running_covariance{
 };
 
 
+template <typename num_t, typename index_t, typename response_t>
+struct rect {
+    num_t *lower, *upper;
+    index_t n_features;
 
+    rect() {
+    }
 
+    rect(index_t n_features) : n_features(n_features) {
+        lower = new response_t[n_features];
+        upper = new response_t[n_features];
+        std::fill(lower, &lower[n_features], -std::numeric_limits<response_t>::infinity());
+        std::fill(upper, &upper[n_features], std::numeric_limits<response_t>::infinity());
+    }
 
+    rect(const rect &rhs): n_features(rhs.n_features) {
+        lower = new response_t[n_features];
+        upper = new response_t[n_features];
+        copy(rhs);
+    };
+
+    void set(index_t feature, std::pair<response_t, response_t> border) {
+        lower[feature] = border.first;
+        upper[feature] = border.second;
+    }
+
+    void copy(const rect &rhs) {
+        for (index_t i = 0; i < n_features; i++) {
+            lower[i] = rhs.lower[i];
+            upper[i] = rhs.upper[i];
+        }
+    };
+
+    bool intersects(const rect &rhs) const {
+        for (index_t i = 0; i < n_features; i++) {
+            if (lower[i] > rhs.upper[i] - 1e-8) return false; // >=
+            if (upper[i] < rhs.lower[i] + 1e-8) return false; // <=
+        }
+        return true;
+    }
+};
 
 }}//namespace rfr::util
 #endif

@@ -34,4 +34,3 @@ typedef unsigned int index_t;
 %template(running_statistics) rfr::util::running_statistics<num_t>;
 //%template(running_covariance) rfr::util::running_covariance<num_t>;
 %template(weighted_running_stats) rfr::util::weighted_running_statistics<num_t>;
-

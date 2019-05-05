@@ -38,8 +38,56 @@ class k_ary_random_tree : public rfr::trees::tree_base<num_t, response_t, index_
 
     // I MADE THIS SHAMELESS EXHIBITION
 	std::vector<node_type> the_nodes;
+    std::vector<response_t> the_means;
+    index_t position;
 	index_t num_leafs;
 	index_t actual_depth;
+
+    void descent_to_intersection(const rfr::util::rect<num_t, index_t, response_t> &current) {
+        bool repeat = true;
+        while (repeat) {
+            repeat = false;
+            while (!the_nodes[position].is_a_leaf() && 
+                    the_nodes[position].get_split().get_num_split_value() <= // threshold  <=
+                    current.lower[the_nodes[position].get_split().get_feature_index()]) { // curent.lower[feature_index]
+                position = the_nodes[position].get_child_index(1);
+                repeat = true;
+            }
+            while (!the_nodes[position].is_a_leaf() && 
+                    the_nodes[position].get_split().get_num_split_value() >= // threshold  >= 
+                    current.upper[the_nodes[position].get_split().get_feature_index()]) { // curent.upper[feature_index] 
+                position = the_nodes[position].get_child_index(0);
+                repeat = true;
+            }
+        }
+    }
+
+    void update_means() {
+        if (0 != the_nodes[0].parent()) {
+            std::cerr << "What the fuck, how this guys managed to dont have a root as the first node???";
+            exit(0);
+        }
+
+        position = 0;
+        the_means.reserve(the_nodes.size());
+        for (index_t node_index = the_nodes.size() - 1; node_index + 1 != 0; node_index--) {
+            node_type node = the_nodes[node_index];
+            if (node.is_a_leaf()) {
+                the_means[node_index] = node.leaf_statistic().mean();
+            } else {
+                response_t max = std::numeric_limits<response_t>::min();
+                for (index_t child_index : node.get_children()) {
+                    if (node_index > child_index) {
+                        std::cerr << "What the fuck, how this guys managed to make child index lower??? " 
+                                  << node_index << " > " << child_index;
+                        exit(0);
+                    }
+                    max = std::max(max, the_means[child_index]);
+                }
+                the_means[node_index] = max;
+            }
+        }
+    }
     // I MADE THIS SHAMELESS EXHIBITION
 
 	k_ary_random_tree(): the_nodes(0), num_leafs(0), actual_depth(0) {}

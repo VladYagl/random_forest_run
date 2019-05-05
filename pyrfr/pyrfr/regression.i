@@ -76,7 +76,7 @@ typedef std::default_random_engine rng_t;
 %template(num_num_pair) std::pair<num_t, num_t>;
 
 %template(num_vector_response_t_pair) std::pair<std::vector<num_t>, response_t>;
-
+%template(num_vector_num_vector_response_t_pair) std::pair<std::pair< std::vector<num_t>, std::vector<num_t> >, response_t>;
 
 // put everything here that should be ignored globally
 %ignore rfr::*::serialize;
