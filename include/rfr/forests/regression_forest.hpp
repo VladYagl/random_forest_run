@@ -55,6 +55,9 @@ class regression_forest{
 	std::vector< std::array<num_t,2> > bounds;
 	
 
+    // FOR MAXIMUM
+    std::vector<index_t> positions;
+
   public:
 
 	forest_options<num_t, response_t, index_t> options;
@@ -72,6 +75,17 @@ class regression_forest{
 	regression_forest(forest_options<num_t, response_t, index_t> opts): options(opts){}
 
 	virtual ~regression_forest()	{};
+
+    std::pair<std::vector<num_t>, response_t> get_maximum() {
+        std::vector<num_t> ans;
+        response_t max = std::numeric_limits<response_t>::min();
+        for (auto &node : the_trees[0].the_nodes) {
+            if (node.is_a_leaf()) {
+                max = std::max(max, node.responses()[0]);
+            }
+        }
+        return make_pair(ans, max);
+    }
 
 	/**\brief growing the random forest for a given data set
 	 * 

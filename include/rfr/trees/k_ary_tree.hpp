@@ -34,11 +34,13 @@ class k_ary_random_tree : public rfr::trees::tree_base<num_t, response_t, index_
   protected:
     typedef rfr::splits::data_info_t<num_t, response_t, index_t> info_t;
 
+  public:
+
+    // I MADE THIS SHAMELESS EXHIBITION
 	std::vector<node_type> the_nodes;
 	index_t num_leafs;
 	index_t actual_depth;
-
-  public:
+    // I MADE THIS SHAMELESS EXHIBITION
 
 	k_ary_random_tree(): the_nodes(0), num_leafs(0), actual_depth(0) {}
 
