@@ -55,84 +55,68 @@ protected:
 
     // FOR MAXIMUM
     rect_t current, ans;
-    response_t ans_value;
+    response_t ans_value, amp;
 
-    void sync_values() {
-        response_t est = 0;
-        bool all_leaves = true;
+    void find_maximum(response_t error) {
         std::vector<index_t> positions;
+        bool all_leaves = true;
+        index_t split_index = -1;
+        response_t max_diff = -1;
+        response_t est = 0;
 
-        // make all intersect current
-        for (auto &tree : the_trees) {
+        for (index_t tree_index = 0; tree_index < the_trees.size(); tree_index++) {
+            auto &tree = the_trees[tree_index];
             positions.push_back(tree.position);
             tree.descent_to_intersection(current);
             auto &node = tree.the_nodes[tree.position];
             if (!node.is_a_leaf()) {
                 all_leaves = false;
+                double diff = abs(tree.the_means[node.get_child_index(0)] - tree.the_means[node.get_child_index(1)]);
+                if (diff > max_diff) {
+                    max_diff = diff;
+                    split_index = tree_index;
+                }
             }
             est += tree.the_means[tree.position];
         }
 
-        // update ans if all leafs
         if (all_leaves) {
             if (est > ans_value) {
                 ans_value = est;
                 ans.copy(current);
             }
-        } else {
-            if (est > ans_value) {
-                split();
+        } else if (est > ans_value + error * amp) {
+            auto &split_tree = the_trees[split_index];
+            auto &split_node = split_tree.the_nodes[split_tree.position];
+            index_t split_feature = split_node.get_split().get_feature_index();
+            num_t split_threshold = split_node.get_split().get_num_split_value();
+            index_t best = split_node.get_child_index(0);
+            index_t worst = split_node.get_child_index(1);
+            auto old_border = std::make_pair(current.lower[split_feature], current.upper[split_feature]);
+            auto best_border = std::make_pair(old_border.first, split_threshold);
+            auto worst_border = std::make_pair(split_threshold, old_border.second);
+
+            if (split_tree.the_means[best] < split_tree.the_means[worst]) {
+                std::swap(best, worst);
+                std::swap(best_border, worst_border);
             }
+
+            split_tree.position = best;
+            current.set(split_feature, best_border);
+            find_maximum(error);
+
+            if (est - split_tree.the_means[best] + split_tree.the_means[worst] > ans_value + error * amp) {
+                split_tree.position = worst;
+                current.set(split_feature, worst_border);
+                find_maximum(error);
+            }
+
+            current.set(split_feature, old_border);
         }
 
-        for (index_t i = 0; i < options.num_trees; i++) {
+        for (index_t i = 0; i < the_trees.size(); i++) {
             the_trees[i].position = positions[i];
         }
-    }
-
-    void split() {
-        tree_type *split_tree = nullptr;
-        response_t max_diff = -1;
-        response_t est = 0;
-        for (auto &tree : the_trees) {
-            auto &node = tree.the_nodes[tree.position];
-            est += tree.the_means[tree.position];
-            if (!node.is_a_leaf()) {
-                double diff = abs(tree.the_means[node.get_child_index(0)] - tree.the_means[node.get_child_index(1)]);
-                if (diff > max_diff) {
-                    max_diff = diff;
-                    split_tree = &tree;
-                }
-            }
-        }
-
-        auto &split_node = split_tree->the_nodes[split_tree->position];
-        index_t old_position = split_tree->position;
-        index_t split_feature = split_node.get_split().get_feature_index();
-        num_t split_threshold = split_node.get_split().get_num_split_value();
-        index_t best = split_node.get_child_index(0);
-        index_t worst = split_node.get_child_index(1);
-        auto old_border = std::make_pair(current.lower[split_feature], current.upper[split_feature]);
-        auto best_border = std::make_pair(old_border.first, split_threshold);
-        auto worst_border = std::make_pair(split_threshold, old_border.second);
-
-        if (split_tree->the_means[best] < split_tree->the_means[worst]) {
-            std::swap(best, worst);
-            std::swap(best_border, worst_border);
-        }
-
-        split_tree->position = best;
-        current.set(split_feature, best_border);
-        sync_values();
-
-        if (est - split_tree->the_means[best] + split_tree->the_means[worst] > ans_value) {
-            split_tree->position = worst;
-            current.set(split_feature, worst_border);
-            sync_values();
-        }
-
-        split_tree->position = old_position;
-        current.set(split_feature, old_border);
     }
 
 public:
@@ -152,42 +136,25 @@ public:
 
     virtual ~regression_forest(){};
 
-    std::pair<std::pair<std::vector<num_t>, std::vector<num_t>>, response_t> get_maximum(bool random) {
-        if (random) {
-            std::vector< std::uniform_real_distribution<num_t> > distrs;
-            for (auto bound : bounds) {
-                distrs.emplace_back(bound[0], bound[1]);
+    std::pair<std::pair<std::vector<num_t>, std::vector<num_t>>, response_t> get_maximum(response_t error) {
+        response_t min = std::numeric_limits<response_t>::max();
+        response_t max = -std::numeric_limits<response_t>::max();
+        for (auto &tree : the_trees) {
+            tree.update_means();
+            for (response_t mean : tree.the_means) {
+                min = std::min(min, mean);
+                max = std::max(max, mean);
             }
-            std::vector<num_t> point(num_features);
-            std::vector<num_t> best(num_features);
-
-            response_t max = std::numeric_limits<response_t>::min();
-            std::default_random_engine rng;
-            for (index_t shit = 0; shit < 100000; shit++) {
-                for (index_t i = 0; i < num_features; i++) {
-                    point[i] = distrs[i](rng);
-                }
-                response_t res = predict(point);
-                if (res > max) {
-                    max = res;
-                    best = point;
-                }
-            }
-
-            return std::make_pair(std::make_pair(best, best), max);
-        } else {
-            for (auto &tree : the_trees) {
-                tree.update_means();
-            }
-
-            current = rect_t(num_features);
-            ans = rect_t(num_features);
-            ans_value = std::numeric_limits<response_t>::min();
-
-            sync_values();
-
-            return std::make_pair(std::make_pair(ans.lower, ans.upper), ans_value / num_trees());
         }
+
+        current = rect_t(num_features);
+        ans = rect_t(num_features);
+        ans_value = -std::numeric_limits<response_t>::max();
+        amp = max - min;
+
+        find_maximum(error);
+
+        return std::make_pair(std::make_pair(ans.lower, ans.upper), ans_value / num_trees());
     }
 
     /**\brief growing the random forest for a given data set

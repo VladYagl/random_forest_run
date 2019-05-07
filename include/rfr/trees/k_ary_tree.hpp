@@ -65,13 +65,8 @@ class k_ary_random_tree : public rfr::trees::tree_base<num_t, response_t, index_
     }
 
     void update_means() {
-        if (0 != the_nodes[0].parent()) {
-            std::cerr << "What the fuck, how this guys managed to dont have a root as the first node???";
-            exit(0);
-        }
-
         position = 0;
-        the_means.reserve(the_nodes.size());
+        the_means.resize(the_nodes.size());
         for (index_t node_index = the_nodes.size() - 1; node_index + 1 != 0; node_index--) {
             node_type &node = the_nodes[node_index];
             if (node.is_a_leaf()) {
@@ -79,11 +74,6 @@ class k_ary_random_tree : public rfr::trees::tree_base<num_t, response_t, index_
             } else {
                 response_t max = std::numeric_limits<response_t>::min();
                 for (index_t child_index : node.get_children()) {
-                    if (node_index > child_index) {
-                        std::cerr << "What the fuck, how this guys managed to make child index lower??? " 
-                                  << node_index << " > " << child_index;
-                        exit(0);
-                    }
                     max = std::max(max, the_means[child_index]);
                 }
                 the_means[node_index] = max;
