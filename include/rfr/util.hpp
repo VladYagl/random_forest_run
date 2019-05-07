@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <cstdio>
 #include <stdexcept>
 
 
@@ -493,17 +494,16 @@ class running_covariance{
 
 template <typename num_t, typename index_t, typename response_t>
 struct rect {
-    num_t *lower, *upper;
     index_t n_features;
+    std::vector<num_t> lower, upper;
 
     rect() {
     }
 
-    rect(index_t n_features) : n_features(n_features) {
-        lower = new response_t[n_features];
-        upper = new response_t[n_features];
-        std::fill(lower, &lower[n_features], -std::numeric_limits<response_t>::infinity());
-        std::fill(upper, &upper[n_features], std::numeric_limits<response_t>::infinity());
+    rect(index_t n_features) : 
+        n_features(n_features), 
+        lower(n_features, -std::numeric_limits<response_t>::infinity()), 
+        upper(n_features, std::numeric_limits<response_t>::infinity()) {
     }
 
     rect(const rect &rhs): n_features(rhs.n_features) {
@@ -523,6 +523,14 @@ struct rect {
             upper[i] = rhs.upper[i];
         }
     };
+
+    void print(FILE *stream) const {
+        fprintf(stream, "\n");
+        for (size_t i = 0; i < n_features; i++) {
+            fprintf(stream, "    %8lf\t%8lf\n", lower[i], upper[i]);
+        }
+        fprintf(stream, "\n");
+    }
 
     bool intersects(const rect &rhs) const {
         for (index_t i = 0; i < n_features; i++) {

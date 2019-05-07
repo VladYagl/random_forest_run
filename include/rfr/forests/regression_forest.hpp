@@ -54,17 +54,17 @@ protected:
     std::vector<std::array<num_t, 2>> bounds;
 
     // FOR MAXIMUM
-    std::vector<index_t> positions;
     rect_t current, ans;
     response_t ans_value;
 
     void sync_values() {
         response_t est = 0;
         bool all_leaves = true;
-        auto old_positions = positions;
+        std::vector<index_t> positions;
 
         // make all intersect current
         for (auto &tree : the_trees) {
+            positions.push_back(tree.position);
             tree.descent_to_intersection(current);
             auto &node = tree.the_nodes[tree.position];
             if (!node.is_a_leaf()) {
@@ -79,19 +79,19 @@ protected:
                 ans_value = est;
                 ans.copy(current);
             }
-            positions = std::move(old_positions);
-            return;
+        } else {
+            if (est > ans_value) {
+                split();
+            }
         }
 
-        if (est > ans_value) {
-            split();
+        for (index_t i = 0; i < options.num_trees; i++) {
+            the_trees[i].position = positions[i];
         }
-
-        positions = std::move(old_positions);
     }
 
     void split() {
-        tree_type *split_tree = &the_trees[0];
+        tree_type *split_tree = nullptr;
         response_t max_diff = -1;
         response_t est = 0;
         for (auto &tree : the_trees) {
@@ -186,14 +186,7 @@ public:
 
             sync_values();
 
-            std::vector<num_t> lower, upper;
-            lower.assign(ans.lower, ans.lower + num_features);
-            upper.assign(ans.upper, ans.upper + num_features);
-
-            std::cerr << "lower :: " << predict(lower) << std::endl;
-            std::cerr << "upper :: " << predict(upper) << std::endl;
-
-            return std::make_pair(std::make_pair(lower, upper), ans_value / num_trees());
+            return std::make_pair(std::make_pair(ans.lower, ans.upper), ans_value / num_trees());
         }
     }
 

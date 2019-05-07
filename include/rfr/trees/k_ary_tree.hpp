@@ -47,17 +47,19 @@ class k_ary_random_tree : public rfr::trees::tree_base<num_t, response_t, index_
         bool repeat = true;
         while (repeat) {
             repeat = false;
-            while (!the_nodes[position].is_a_leaf() && 
-                    the_nodes[position].get_split().get_num_split_value() <= // threshold  <=
-                    current.lower[the_nodes[position].get_split().get_feature_index()]) { // curent.lower[feature_index]
-                position = the_nodes[position].get_child_index(1);
+            if (!the_nodes[position].is_a_leaf()) {
+                auto &split = the_nodes[position].get_split();
+                num_t threshold = split.get_num_split_value();
+                index_t feature = split.get_feature_index();
+
                 repeat = true;
-            }
-            while (!the_nodes[position].is_a_leaf() && 
-                    the_nodes[position].get_split().get_num_split_value() >= // threshold  >= 
-                    current.upper[the_nodes[position].get_split().get_feature_index()]) { // curent.upper[feature_index] 
-                position = the_nodes[position].get_child_index(0);
-                repeat = true;
+                if (threshold <= current.lower[feature]) {
+                    position = the_nodes[position].get_child_index(1);
+                } else if (threshold >= current.upper[feature]) {
+                    position = the_nodes[position].get_child_index(0);
+                } else {
+                    repeat = false;
+                }
             }
         }
     }
@@ -71,7 +73,7 @@ class k_ary_random_tree : public rfr::trees::tree_base<num_t, response_t, index_
         position = 0;
         the_means.reserve(the_nodes.size());
         for (index_t node_index = the_nodes.size() - 1; node_index + 1 != 0; node_index--) {
-            node_type node = the_nodes[node_index];
+            node_type &node = the_nodes[node_index];
             if (node.is_a_leaf()) {
                 the_means[node_index] = node.leaf_statistic().mean();
             } else {
