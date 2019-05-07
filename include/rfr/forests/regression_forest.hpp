@@ -123,22 +123,24 @@ class regression_forest{
         }
     }
 
-public:
-    forest_options<num_t, response_t, index_t> options;
+  public:
 
-    /** \brief serialize function for saving forests with cerial*/
-    template <class Archive>
-    void serialize(Archive &archive) {
-        archive(options, the_trees, num_features, bootstrap_sample_weights, oob_error, types, bounds);
-    }
+	forest_options<num_t, response_t, index_t> options;
 
-    regression_forest() : options() {
-    }
 
-    regression_forest(forest_options<num_t, response_t, index_t> opts) : options(opts) {
-    }
+  	/** \brief serialize function for saving forests with cerial*/
+  	template<class Archive>
+	void serialize(Archive & archive)
+	{
+		archive( options, the_trees, num_features, bootstrap_sample_weights, oob_error, types, bounds);
+	}
 
-    virtual ~regression_forest(){};
+	regression_forest(): options()	{}
+
+	regression_forest(forest_options<num_t, response_t, index_t> opts): options(opts){}
+
+	virtual ~regression_forest()	{};
+
 
     std::pair<std::pair<std::vector<num_t>, std::vector<num_t>>, response_t> get_maximum(response_t error) {
         response_t min = std::numeric_limits<response_t>::max();
