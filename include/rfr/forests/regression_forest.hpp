@@ -61,7 +61,7 @@ class regression_forest{
     rect_t current, ans;
     response_t ans_value, amp;
 
-    void find_minimum(response_t error) {
+    void find_minimum(bool is_maximum, response_t error) {
         std::vector<index_t> positions;
         bool all_leaves = true;
         index_t split_index = -1;
@@ -85,11 +85,11 @@ class regression_forest{
         }
 
         if (all_leaves) {
-            if (est < ans_value) {
+            if ((est < ans_value && !is_maximum) || (est > ans_value && is_maximum))   {
                 ans_value = est;
                 ans.copy(current);
             }
-        } else if (est < ans_value - error * amp) {
+        } else if ((est < ans_value - error * amp && !is_maximum) || (est > ans_value + error * amp && is_maximum)) {
             auto &split_tree = the_trees[split_index];
             auto &split_node = split_tree.the_nodes[split_tree.position];
             index_t split_feature = split_node.get_split().get_feature_index();
@@ -100,19 +100,20 @@ class regression_forest{
             auto best_border = std::make_pair(old_border.first, split_threshold);
             auto worst_border = std::make_pair(split_threshold, old_border.second);
 
-            if (split_tree.the_means[best] > split_tree.the_means[worst]) {
+            if ((split_tree.the_means[best] > split_tree.the_means[worst] && !is_maximum) || (split_tree.the_means[best] < split_tree.the_means[worst] && is_maximum)) {
                 std::swap(best, worst);
                 std::swap(best_border, worst_border);
             }
 
             split_tree.position = best;
             current.set(split_feature, best_border);
-            find_minimum(error);
+            find_minimum(is_maximum, error);
 
-            if (est - split_tree.the_means[best] + split_tree.the_means[worst] < ans_value - error * amp) {
+            response_t new_value = est - split_tree.the_means[best] + split_tree.the_means[worst];
+            if ((new_value < ans_value - error * amp && !is_maximum) || (new_value > ans_value + error * amp && is_maximum)) {
                 split_tree.position = worst;
                 current.set(split_feature, worst_border);
-                find_minimum(error);
+                find_minimum(is_maximum, error);
             }
 
             current.set(split_feature, old_border);
@@ -142,11 +143,11 @@ class regression_forest{
 	virtual ~regression_forest()	{};
 
 
-    std::pair<std::pair<std::vector<num_t>, std::vector<num_t>>, response_t> get_minimum(response_t error) {
+    std::pair<std::pair<std::vector<num_t>, std::vector<num_t>>, response_t> get_minimum(bool is_maximum, response_t error) {
         response_t min = std::numeric_limits<response_t>::max();
         response_t max = -std::numeric_limits<response_t>::max();
         for (auto &tree : the_trees) {
-            tree.update_means();
+            tree.update_means(is_maximum);
             for (response_t mean : tree.the_means) {
                 min = std::min(min, mean);
                 max = std::max(max, mean);
@@ -155,10 +156,14 @@ class regression_forest{
 
         current = rect_t(num_features);
         ans = rect_t(num_features);
-        ans_value = std::numeric_limits<response_t>::max();
+        if (!is_maximum) {
+            ans_value = std::numeric_limits<response_t>::max();
+        } else {
+            ans_value = -std::numeric_limits<response_t>::max();
+        }
         amp = max - min;
 
-        find_minimum(error);
+        find_minimum(is_maximum, error);
 
         return std::make_pair(std::make_pair(ans.lower, ans.upper), ans_value / num_trees());
     }

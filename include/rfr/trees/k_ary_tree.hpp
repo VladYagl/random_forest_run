@@ -64,7 +64,7 @@ class k_ary_random_tree : public rfr::trees::tree_base<num_t, response_t, index_
         }
     }
 
-    void update_means() {
+    void update_means(bool is_maximum) {
         position = 0;
         the_means.resize(the_nodes.size());
         for (index_t node_index = the_nodes.size() - 1; node_index + 1 != 0; node_index--) {
@@ -72,11 +72,19 @@ class k_ary_random_tree : public rfr::trees::tree_base<num_t, response_t, index_
             if (node.is_a_leaf()) {
                 the_means[node_index] = node.leaf_statistic().mean();
             } else {
-                response_t min = std::numeric_limits<response_t>::max();
-                for (index_t child_index : node.get_children()) {
-                    min = std::min(min, the_means[child_index]);
+                if (!is_maximum) {
+                    response_t min = std::numeric_limits<response_t>::max();
+                    for (index_t child_index : node.get_children()) {
+                        min = std::min(min, the_means[child_index]);
+                    }
+                    the_means[node_index] = min;
+                } else {
+                    response_t max = std::numeric_limits<response_t>::min();
+                    for (index_t child_index : node.get_children()) {
+                        max = std::max(max, the_means[child_index]);
+                    }
+                    the_means[node_index] = max;
                 }
-                the_means[node_index] = min;
             }
         }
     }
